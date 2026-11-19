@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Ascension Protocol</title>
+    <title>Current Protocol</title>
     <style>
         :root {
-            --bg: #0a0a0a;
-            --card-bg: #1a1a1a;
+            --bg: #000000;
+            --card-bg: #1c1c1e;
             --text: #ffffff;
-            --text-muted: #888888;
-            --accent: #00ffcc;
-            --danger: #ff3366;
-            --border: #333333;
+            --text-muted: #8e8e93;
+            --accent: #30d158; /* iOS Green */
+            --danger: #ff453a; /* iOS Red */
+            --border: #38383a;
         }
 
         * {
@@ -22,247 +22,297 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg);
             color: var(--text);
-            padding: 20px 15px;
+            padding: 20px;
             padding-top: max(20px, env(safe-area-inset-top));
             padding-bottom: max(20px, env(safe-area-inset-bottom));
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        .header p {
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
             color: var(--text-muted);
             font-size: 14px;
-            margin-top: 5px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .task-card {
+        .active-card {
             background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
+            border-radius: 20px;
+            padding: 25px;
+            border: 2px solid var(--border);
+            flex-grow: 1;
             display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            transition: all 0.3s ease;
+            flex-direction: column;
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
 
-        /* Active Task Styling */
-        .task-card.active {
-            border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(0, 255, 204, 0.1);
-            transform: scale(1.02);
-        }
-        
-        .task-card.danger.active {
+        .active-card.danger {
             border-color: var(--danger);
-            box-shadow: 0 0 10px rgba(255, 51, 102, 0.2);
+            box-shadow: 0 0 20px rgba(255, 69, 58, 0.15);
         }
 
         .time-block {
+            font-size: 18px;
             font-weight: 700;
-            font-size: 14px;
-            color: var(--text-muted);
-            min-width: 65px;
-            padding-top: 2px;
+            color: var(--accent);
+            margin-bottom: 10px;
         }
 
-        .task-card.active .time-block {
-            color: var(--accent);
-        }
-        .task-card.danger.active .time-block {
+        .active-card.danger .time-block {
             color: var(--danger);
         }
 
-        .task-content {
-            flex-grow: 1;
-        }
-
         .task-title {
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 4px;
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            line-height: 1.1;
         }
 
-        .task-desc {
-            font-size: 13px;
-            color: var(--text-muted);
-            line-height: 1.4;
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        /* Checklist Checkbox */
-        .checkbox-wrapper {
-            position: relative;
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        .checkbox-wrapper input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .checkmark {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 24px;
-            width: 24px;
-            background-color: #222;
-            border: 2px solid #444;
-            border-radius: 6px;
+        .check-item {
+            display: flex;
+            align-items: center;
+            background: #2c2c2e;
+            padding: 18px 20px;
+            border-radius: 14px;
             cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .check-item:active {
+            transform: scale(0.98);
+        }
+
+        .check-item.completed {
+            opacity: 0.4;
+        }
+
+        .check-item.completed .check-text {
+            text-decoration: line-through;
+        }
+
+        .checkbox {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
             transition: all 0.2s;
         }
 
-        .checkbox-wrapper input:checked ~ .checkmark {
+        .check-item.completed .checkbox {
             background-color: var(--accent);
             border-color: var(--accent);
         }
 
-        .checkmark:after {
-            content: "";
-            position: absolute;
-            display: none;
-            left: 7px;
-            top: 3px;
-            width: 5px;
-            height: 10px;
-            border: solid #000;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
+        .check-item.danger.completed .checkbox {
+            background-color: var(--danger);
+            border-color: var(--danger);
         }
 
-        .checkbox-wrapper input:checked ~ .checkmark:after {
+        .checkbox::after {
+            content: "✓";
+            color: #000;
+            font-weight: 900;
+            font-size: 16px;
+            display: none;
+        }
+
+        .check-item.completed .checkbox::after {
             display: block;
         }
 
-        .completed .task-title {
-            text-decoration: line-through;
+        .check-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .next-up {
+            margin-top: 20px;
+            text-align: center;
             color: var(--text-muted);
+            font-size: 14px;
         }
-        .completed {
-            opacity: 0.6;
-        }
+
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>ASCENSION</h1>
-        <p id="current-time">Loading time...</p>
+    <div class="status-bar">
+        <span id="current-time">--:--</span>
+        <span id="status-text">ACTIVE NOW</span>
     </div>
 
-    <div id="schedule-container">
-        <!-- Tasks will be injected here by JS -->
+    <div id="app-container">
+        <!-- The active card renders here -->
     </div>
 
     <script>
-        // The Protocol Schedule
+        // The Protocol Data
         const schedule = [
-            { start: "06:00", end: "06:15", title: "Wake Up & Hydrate", desc: "Drink 500ml cold water. Wash face with cold water. No phone.", id: "task1", danger: false },
-            { start: "06:15", end: "06:45", title: "Breakfast", desc: "3 eggs + 1 piece of toast. Drink water. No cereal/juice.", id: "task2", danger: false },
-            { start: "07:00", end: "14:15", title: "School Protocol", desc: "Drink 1L water. Posture: Tongue on roof of mouth. Eat prepped lunch (protein first).", id: "task3", danger: false },
-            { start: "14:15", end: "15:30", title: "DANGER ZONE", desc: "DO NOT GO HOME. Go straight to weight room/climbing. Avoid the pantry.", id: "task4", danger: true },
-            { start: "15:30", end: "16:30", title: "Training", desc: "Lift weights (Mon/Wed/Fri) or Climb (Tue/Thu). 45 mins max.", id: "task5", danger: false },
-            { start: "18:00", end: "18:45", title: "Dinner", desc: "Parents' food. Protein first, veggies second. Half portion of carbs. No seconds.", id: "task6", danger: false },
-            { start: "20:00", end: "20:15", title: "Kitchen Closed", desc: "No more food. Water or black coffee only.", id: "task7", danger: true },
-            { start: "21:00", end: "21:15", title: "Phone Cutoff", desc: "Put phone in the kitchen. Switch to alarm clock. Wash face.", id: "task8", danger: false },
-            { start: "21:30", end: "23:59", title: "Lights Out", desc: "8.5 hours sleep. Pitch black room. This is when testosterone peaks.", id: "task9", danger: false }
+            { 
+                start: "06:00", end: "06:30", title: "Morning Wake Up", danger: false,
+                tasks: ["Drink 500ml water immediately", "Wash face with cold water", "No phone scrolling"]
+            },
+            { 
+                start: "06:30", end: "07:00", title: "Breakfast", danger: false,
+                tasks: ["Eat 3 eggs", "1 piece of toast", "Drink water (no juice)"]
+            },
+            { 
+                start: "07:00", end: "14:15", title: "School Protocol", danger: false,
+                tasks: ["Drink 1L water before lunch", "Tongue on roof of mouth", "Eat prepped lunch (protein first)"]
+            },
+            { 
+                start: "14:15", end: "15:30", title: "DANGER ZONE", danger: true,
+                tasks: ["Go straight to weight room/climb", "DO NOT open the pantry", "Zero Red Bull/Chips"]
+            },
+            { 
+                start: "15:30", end: "17:00", title: "Training", danger: false,
+                tasks: ["45 min weightlifting/climbing", "Hit 10,000 steps total", "Drink 1L water"]
+            },
+            { 
+                start: "17:00", end: "20:00", title: "Dinner & Evening", danger: false,
+                tasks: ["Protein first, veggies second", "HALF portion of carbs", "NO SECONDS. Kitchen closes at 8."]
+            },
+            { 
+                start: "20:00", end: "21:00", title: "Shutdown", danger: true,
+                tasks: ["No food. Water only.", "Skincare (wash + moisturize)", "Prep bag for tomorrow"]
+            },
+            { 
+                start: "21:00", end: "23:59", title: "Sleep Protocol", danger: false,
+                tasks: ["PHONE IN THE KITCHEN", "Lights out by 21:30", "8.5 hours sleep for Test/HGH"]
+            }
         ];
 
-        // Helper to convert "HH:MM" to minutes since midnight
+        // Get today's date for daily reset (MM/DD/YYYY)
+        const today = new Date().toLocaleDateString();
+
         function timeToMins(timeStr) {
             const [h, m] = timeStr.split(":").map(Number);
             return (h * 60) + m;
         }
 
-        // Get today's date string for LocalStorage (resets daily)
-        const today = new Date().toLocaleDateString();
-
-        // Render the UI
-        const container = document.getElementById('schedule-container');
-        
-        schedule.forEach(task => {
-            const card = document.createElement('div');
-            card.className = `task-card ${task.danger ? 'danger' : ''}`;
-            card.id = `card-${task.id}`;
-
-            // Check LocalStorage for completion state
-            const isChecked = localStorage.getItem(`${today}-${task.id}`) === 'true';
-            if (isChecked) card.classList.add('completed');
-
-            card.innerHTML = `
-                <div class="time-block">${task.start}</div>
-                <div class="task-content">
-                    <div class="task-title">${task.title}</div>
-                    <div class="task-desc">${task.desc}</div>
-                </div>
-                <label class="checkbox-wrapper">
-                    <input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}')">
-                    <span class="checkmark"></span>
-                </label>
-            `;
-            container.appendChild(card);
-        });
-
-        // Checklist Toggle Function
-        function toggleTask(id) {
-            const checkbox = document.getElementById(id);
-            const card = document.getElementById(`card-${id}`);
-            
-            if (checkbox.checked) {
-                card.classList.add('completed');
-                localStorage.setItem(`${today}-${id}`, 'true');
-            } else {
-                card.classList.remove('completed');
-                localStorage.setItem(`${today}-${id}`, 'false');
-            }
-        }
-
-        // Dynamic Time Checker
-        function updateTimeAndHighlight() {
+        function render() {
             const now = new Date();
             const currentMins = (now.getHours() * 60) + now.getMinutes();
             
-            // Update header time
+            // Update clock
             document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            // Highlight active task
-            schedule.forEach(task => {
-                const card = document.getElementById(`card-${task.id}`);
+            // Find current task
+            let activeTask = null;
+            let activeIndex = -1;
+
+            for (let i = 0; i < schedule.length; i++) {
+                const task = schedule[i];
                 const startMins = timeToMins(task.start);
                 const endMins = timeToMins(task.end);
 
                 if (currentMins >= startMins && currentMins < endMins) {
-                    card.classList.add('active');
-                } else {
-                    card.classList.remove('active');
+                    activeTask = task;
+                    activeIndex = i;
+                    break;
                 }
+            }
+
+            const container = document.getElementById('app-container');
+            const statusText = document.getElementById('status-text');
+
+            // If outside scheduled hours (e.g., 2 AM), show sleep
+            if (!activeTask) {
+                if (currentMins < timeToMins("06:00")) {
+                    statusText.innerText = "SLEEPING";
+                    container.innerHTML = `
+                        <div class="active-card">
+                            <div class="time-block">00:00 - 06:00</div>
+                            <div class="task-title">Go to sleep.</div>
+                            <div class="checklist">
+                                <div class="check-item completed">
+                                    <div class="checkbox"></div>
+                                    <div class="check-text">Phone is in the kitchen</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // After 23:59 (rare edge case, just show sleep)
+                    statusText.innerText = "SLEEPING";
+                    container.innerHTML = `<div class="task-title">Go to bed.</div>`;
+                }
+                return;
+            }
+
+            statusText.innerText = activeTask.danger ? "CAUTION" : "ACTIVE NOW";
+
+            // Build HTML
+            let html = `
+                <div class="active-card ${activeTask.danger ? 'danger' : ''}">
+                    <div class="time-block">${activeTask.start} - ${activeTask.end}</div>
+                    <div class="task-title">${activeTask.title}</div>
+                    <div class="checklist">
+            `;
+
+            activeTask.tasks.forEach((taskText, taskIndex) => {
+                const storageKey = `${today}-${activeIndex}-${taskIndex}`;
+                const isChecked = localStorage.getItem(storageKey) === 'true';
+                
+                html += `
+                    <div class="check-item ${isChecked ? 'completed' : ''} ${activeTask.danger ? 'danger' : ''}" onclick="toggleCheck('${storageKey}', this)">
+                        <div class="checkbox"></div>
+                        <div class="check-text">${taskText}</div>
+                    </div>
+                `;
             });
+
+            html += `</div></div>`;
+
+            // Add "Next Up" text
+            if (activeIndex < schedule.length - 1) {
+                const nextTask = schedule[activeIndex + 1];
+                html += `<div class="next-up">Next up: ${nextTask.title} at ${nextTask.start}</div>`;
+            }
+
+            container.innerHTML = html;
         }
 
-        // Run immediately, then every 10 seconds
-        updateTimeAndHighlight();
-        setInterval(updateTimeAndHighlight, 10000);
+        function toggleCheck(key, element) {
+            const isCompleted = element.classList.contains('completed');
+            if (isCompleted) {
+                element.classList.remove('completed');
+                localStorage.setItem(key, 'false');
+            } else {
+                element.classList.add('completed');
+                localStorage.setItem(key, 'true');
+            }
+        }
+
+        // Initial render
+        render();
+
+        // Check time every 30 seconds to swap tasks
+        setInterval(render, 30000);
 
     </script>
 </body>
