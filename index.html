@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ascension Protocol</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text: #ffffff;
+            --text-muted: #888888;
+            --accent: #00ffcc;
+            --danger: #ff3366;
+            --border: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px 15px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .task-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        /* Active Task Styling */
+        .task-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.1);
+            transform: scale(1.02);
+        }
+        
+        .task-card.danger.active {
+            border-color: var(--danger);
+            box-shadow: 0 0 10px rgba(255, 51, 102, 0.2);
+        }
+
+        .time-block {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-muted);
+            min-width: 65px;
+            padding-top: 2px;
+        }
+
+        .task-card.active .time-block {
+            color: var(--accent);
+        }
+        .task-card.danger.active .time-block {
+            color: var(--danger);
+        }
+
+        .task-content {
+            flex-grow: 1;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .task-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Checklist Checkbox */
+        .checkbox-wrapper {
+            position: relative;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .checkbox-wrapper input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 24px;
+            width: 24px;
+            background-color: #222;
+            border: 2px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-wrapper input:checked ~ .checkmark {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 7px;
+            top: 3px;
+            width: 5px;
+            height: 10px;
+            border: solid #000;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .checkbox-wrapper input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .completed .task-title {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+        .completed {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>ASCENSION</h1>
+        <p id="current-time">Loading time...</p>
+    </div>
+
+    <div id="schedule-container">
+        <!-- Tasks will be injected here by JS -->
+    </div>
+
+    <script>
+        // The Protocol Schedule
+        const schedule = [
+            { start: "06:00", end: "06:15", title: "Wake Up & Hydrate", desc: "Drink 500ml cold water. Wash face with cold water. No phone.", id: "task1", danger: false },
+            { start: "06:15", end: "06:45", title: "Breakfast", desc: "3 eggs + 1 piece of toast. Drink water. No cereal/juice.", id: "task2", danger: false },
+            { start: "07:00", end: "14:15", title: "School Protocol", desc: "Drink 1L water. Posture: Tongue on roof of mouth. Eat prepped lunch (protein first).", id: "task3", danger: false },
+            { start: "14:15", end: "15:30", title: "DANGER ZONE", desc: "DO NOT GO HOME. Go straight to weight room/climbing. Avoid the pantry.", id: "task4", danger: true },
+            { start: "15:30", end: "16:30", title: "Training", desc: "Lift weights (Mon/Wed/Fri) or Climb (Tue/Thu). 45 mins max.", id: "task5", danger: false },
+            { start: "18:00", end: "18:45", title: "Dinner", desc: "Parents' food. Protein first, veggies second. Half portion of carbs. No seconds.", id: "task6", danger: false },
+            { start: "20:00", end: "20:15", title: "Kitchen Closed", desc: "No more food. Water or black coffee only.", id: "task7", danger: true },
+            { start: "21:00", end: "21:15", title: "Phone Cutoff", desc: "Put phone in the kitchen. Switch to alarm clock. Wash face.", id: "task8", danger: false },
+            { start: "21:30", end: "23:59", title: "Lights Out", desc: "8.5 hours sleep. Pitch black room. This is when testosterone peaks.", id: "task9", danger: false }
+        ];
+
+        // Helper to convert "HH:MM" to minutes since midnight
+        function timeToMins(timeStr) {
+            const [h, m] = timeStr.split(":").map(Number);
+            return (h * 60) + m;
+        }
+
+        // Get today's date string for LocalStorage (resets daily)
+        const today = new Date().toLocaleDateString();
+
+        // Render the UI
+        const container = document.getElementById('schedule-container');
+        
+        schedule.forEach(task => {
+            const card = document.createElement('div');
+            card.className = `task-card ${task.danger ? 'danger' : ''}`;
+            card.id = `card-${task.id}`;
+
+            // Check LocalStorage for completion state
+            const isChecked = localStorage.getItem(`${today}-${task.id}`) === 'true';
+            if (isChecked) card.classList.add('completed');
+
+            card.innerHTML = `
+                <div class="time-block">${task.start}</div>
+                <div class="task-content">
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-desc">${task.desc}</div>
+                </div>
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}')">
+                    <span class="checkmark"></span>
+                </label>
+            `;
+            container.appendChild(card);
+        });
+
+        // Checklist Toggle Function
+        function toggleTask(id) {
+            const checkbox = document.getElementById(id);
+            const card = document.getElementById(`card-${id}`);
+            
+            if (checkbox.checked) {
+                card.classList.add('completed');
+                localStorage.setItem(`${today}-${id}`, 'true');
+            } else {
+                card.classList.remove('completed');
+                localStorage.setItem(`${today}-${id}`, 'false');
+            }
+        }
+
+        // Dynamic Time Checker
+        function updateTimeAndHighlight() {
+            const now = new Date();
+            const currentMins = (now.getHours() * 60) + now.getMinutes();
+            
+            // Update header time
+            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            // Highlight active task
+            schedule.forEach(task => {
+                const card = document.getElementById(`card-${task.id}`);
+                const startMins = timeToMins(task.start);
+                const endMins = timeToMins(task.end);
+
+                if (currentMins >= startMins && currentMins < endMins) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+        }
+
+        // Run immediately, then every 10 seconds
+        updateTimeAndHighlight();
+        setInterval(updateTimeAndHighlight, 10000);
+
+    </script>
+</body>
+</html>
