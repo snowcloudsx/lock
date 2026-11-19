@@ -1,3 +1,13 @@
+Here is the updated code. I kept the internal logic in 24-hour format (so the app's clock and math work without bugs), but I added a function that converts all the text displayed on the screen into standard 12-hour AM/PM time.
+
+How to use this:
+
+1. Copy the code below.
+2. Paste it into a text editor and save it as index.html.
+3. Deploy it (GitHub Pages, Netlify, etc.).
+4. Open in Safari, tap Share, and "Add to Home Screen".
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,7 +180,7 @@
     </div>
 
     <script>
-        // The Protocol Data
+        // The Protocol Data (Kept in 24h format for accurate internal math)
         const schedule = [
             { 
                 start: "06:00", end: "06:30", title: "Morning Wake Up", danger: false,
@@ -202,13 +212,22 @@
             },
             { 
                 start: "21:00", end: "23:59", title: "Sleep Protocol", danger: false,
-                tasks: ["PHONE IN THE KITCHEN", "Lights out by 21:30", "8.5 hours sleep for Test/HGH"]
+                tasks: ["PHONE IN THE KITCHEN", "Lights out by 9:30 PM", "8.5 hours sleep for Test/HGH"]
             }
         ];
 
-        // Get today's date for daily reset (MM/DD/YYYY)
         const today = new Date().toLocaleDateString();
 
+        // Convert 24h string to 12h AM/PM string for display
+        function formatTime(timeStr) {
+            const [h, m] = timeStr.split(":").map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 || 12; // Convert 0 to 12
+            const minStr = m.toString().padStart(2, '0');
+            return `${hour12}:${minStr} ${ampm}`;
+        }
+
+        // Convert time string to minutes since midnight for math
         function timeToMins(timeStr) {
             const [h, m] = timeStr.split(":").map(Number);
             return (h * 60) + m;
@@ -218,10 +237,9 @@
             const now = new Date();
             const currentMins = (now.getHours() * 60) + now.getMinutes();
             
-            // Update clock
-            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            // Update clock at the top
+            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
 
-            // Find current task
             let activeTask = null;
             let activeIndex = -1;
 
@@ -240,36 +258,30 @@
             const container = document.getElementById('app-container');
             const statusText = document.getElementById('status-text');
 
-            // If outside scheduled hours (e.g., 2 AM), show sleep
             if (!activeTask) {
-                if (currentMins < timeToMins("06:00")) {
-                    statusText.innerText = "SLEEPING";
-                    container.innerHTML = `
-                        <div class="active-card">
-                            <div class="time-block">00:00 - 06:00</div>
-                            <div class="task-title">Go to sleep.</div>
-                            <div class="checklist">
-                                <div class="check-item completed">
-                                    <div class="checkbox"></div>
-                                    <div class="check-text">Phone is in the kitchen</div>
-                                </div>
+                // If outside scheduled hours (e.g., 2 AM)
+                statusText.innerText = "SLEEPING";
+                container.innerHTML = `
+                    <div class="active-card">
+                        <div class="time-block">12:00 AM - 6:00 AM</div>
+                        <div class="task-title">Go to sleep.</div>
+                        <div class="checklist">
+                            <div class="check-item completed">
+                                <div class="checkbox"></div>
+                                <div class="check-text">Phone is in the kitchen</div>
                             </div>
                         </div>
-                    `;
-                } else {
-                    // After 23:59 (rare edge case, just show sleep)
-                    statusText.innerText = "SLEEPING";
-                    container.innerHTML = `<div class="task-title">Go to bed.</div>`;
-                }
+                    </div>
+                `;
                 return;
             }
 
             statusText.innerText = activeTask.danger ? "CAUTION" : "ACTIVE NOW";
 
-            // Build HTML
+            // Display the times in 12-hour format
             let html = `
                 <div class="active-card ${activeTask.danger ? 'danger' : ''}">
-                    <div class="time-block">${activeTask.start} - ${activeTask.end}</div>
+                    <div class="time-block">${formatTime(activeTask.start)} - ${formatTime(activeTask.end)}</div>
                     <div class="task-title">${activeTask.title}</div>
                     <div class="checklist">
             `;
@@ -288,10 +300,9 @@
 
             html += `</div></div>`;
 
-            // Add "Next Up" text
             if (activeIndex < schedule.length - 1) {
                 const nextTask = schedule[activeIndex + 1];
-                html += `<div class="next-up">Next up: ${nextTask.title} at ${nextTask.start}</div>`;
+                html += `<div class="next-up">Next up: ${nextTask.title} at ${formatTime(nextTask.start)}</div>`;
             }
 
             container.innerHTML = html;
@@ -308,12 +319,10 @@
             }
         }
 
-        // Initial render
         render();
-
-        // Check time every 30 seconds to swap tasks
         setInterval(render, 30000);
 
     </script>
 </body>
 </html>
+```
