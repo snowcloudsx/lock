@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Current Protocol</title>
+    <title>Protocol App</title>
     <style>
         :root {
             --bg: #000000;
@@ -15,6 +15,7 @@
             --accent: #30d158; /* iOS Green */
             --danger: #ff453a; /* iOS Red */
             --border: #38383a;
+            --nav-bg: #1c1c1e;
         }
 
         * {
@@ -30,7 +31,7 @@
             color: var(--text);
             padding: 20px;
             padding-top: max(20px, env(safe-area-inset-top));
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            padding-bottom: max(80px, env(safe-area-inset-bottom)); /* Space for nav bar */
             display: flex;
             flex-direction: column;
             min-height: 100vh;
@@ -47,7 +48,7 @@
             letter-spacing: 0.5px;
         }
 
-        .active-card {
+        .card {
             background-color: var(--card-bg);
             border-radius: 20px;
             padding: 25px;
@@ -56,9 +57,10 @@
             display: flex;
             flex-direction: column;
             transition: border-color 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
         }
 
-        .active-card.danger {
+        .card.danger {
             border-color: var(--danger);
             box-shadow: 0 0 20px rgba(255, 69, 58, 0.15);
         }
@@ -70,7 +72,7 @@
             margin-bottom: 10px;
         }
 
-        .active-card.danger .time-block {
+        .card.danger .time-block {
             color: var(--danger);
         }
 
@@ -156,148 +158,170 @@
             font-size: 14px;
         }
 
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--nav-bg);
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: env(safe-area-inset-bottom);
+            border-top: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 15px 0;
+            flex: 1;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-btn.active {
+            color: var(--accent);
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        .complete-workout-btn {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 20px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .complete-workout-btn:active {
+            opacity: 0.8;
+        }
+
     </style>
 </head>
 <body>
 
-    <div class="status-bar">
-        <span id="current-time">--:--</span>
-        <span id="status-text">ACTIVE NOW</span>
+    <!-- SCHEDULE VIEW -->
+    <div id="schedule-view">
+        <div class="status-bar">
+            <span id="current-time">--:--</span>
+            <span id="status-text">ACTIVE NOW</span>
+        </div>
+        <div id="schedule-container"></div>
     </div>
 
-    <div id="app-container">
-        <!-- The active card renders here -->
+    <!-- WORKOUT VIEW -->
+    <div id="workout-view" class="hidden">
+        <div class="status-bar">
+            <span>WORKOUT SPLIT</span>
+            <span id="workout-day-indicator" style="color: var(--accent);">DAY --</span>
+        </div>
+        <div class="card" id="workout-card">
+            <div class="time-block">TODAY'S FOCUS</div>
+            <div class="task-title" id="workout-title">Loading...</div>
+            <div class="checklist" id="workout-checklist"></div>
+            <button class="complete-workout-btn" onclick="advanceWorkout()">Complete & Advance</button>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" id="nav-schedule" onclick="switchView('schedule')">Protocol</button>
+        <button class="nav-btn" id="nav-workout" onclick="switchView('workout')">Workout</button>
     </div>
 
     <script>
-        // The Protocol Data
+        /* =========================================
+           1. SCHEDULE LOGIC (DAILY PROTOCOL)
+           ========================================= */
         const schedule = [
-            { 
-                start: "06:00", end: "06:30", title: "Morning Wake Up", danger: false,
-                tasks: ["Drink 500ml water immediately", "Wash face with cold water", "No phone scrolling"]
-            },
-            { 
-                start: "06:30", end: "07:00", title: "Breakfast", danger: false,
-                tasks: ["Eat 3 eggs", "1 piece of toast", "Drink water (no juice)"]
-            },
-            { 
-                start: "07:00", end: "14:15", title: "School Protocol", danger: false,
-                tasks: ["Drink 1L water before lunch", "Tongue on roof of mouth", "Eat prepped lunch (protein first)"]
-            },
-            { 
-                start: "14:15", end: "15:30", title: "DANGER ZONE", danger: true,
-                tasks: ["Go straight to weight room/climb", "DO NOT open the pantry", "Zero Red Bull/Chips"]
-            },
-            { 
-                start: "15:30", end: "17:00", title: "Training", danger: false,
-                tasks: ["45 min weightlifting/climbing", "Hit 10,000 steps total", "Drink 1L water"]
-            },
-            { 
-                start: "17:00", end: "20:00", title: "Dinner & Evening", danger: false,
-                tasks: ["Protein first, veggies second", "HALF portion of carbs", "NO SECONDS. Kitchen closes at 8."]
-            },
-            { 
-                start: "20:00", end: "21:00", title: "Shutdown", danger: true,
-                tasks: ["No food. Water only.", "Skincare (wash + moisturize)", "Prep bag for tomorrow"]
-            },
-            { 
-                start: "21:00", end: "23:59", title: "Sleep Protocol", danger: false,
-                tasks: ["PHONE IN THE KITCHEN", "Lights out by 21:30", "8.5 hours sleep for Test/HGH"]
-            }
+            { start: "06:00", end: "06:30", title: "Morning Wake Up", danger: false, tasks: ["Drink 500ml water", "Wash face cold water", "No phone scrolling"] },
+            { start: "06:30", end: "07:00", title: "Breakfast", danger: false, tasks: ["Eat 3 eggs", "1 piece of toast", "Drink water"] },
+            { start: "07:00", end: "14:15", title: "School Protocol", danger: false, tasks: ["Drink 1L water before lunch", "Tongue on roof of mouth", "Eat prepped lunch (protein first)"] },
+            { start: "14:15", end: "15:30", title: "DANGER ZONE", danger: true, tasks: ["Go straight to weight room/climb", "DO NOT open the pantry", "Zero Red Bull/Chips"] },
+            { start: "15:30", end: "17:00", title: "Training / Activity", danger: false, tasks: ["45 min weightlifting/climbing", "Hit 10,000 steps total", "Drink 1L water"] },
+            { start: "17:00", end: "20:00", title: "Dinner & Evening", danger: false, tasks: ["Protein first, veggies second", "HALF portion of carbs", "NO SECONDS. Kitchen closes at 8."] },
+            { start: "20:00", end: "21:00", title: "Shutdown", danger: true, tasks: ["No food. Water only.", "Skincare (wash + moisturize)", "Prep bag for tomorrow"] },
+            { start: "21:00", end: "23:59", title: "Sleep Protocol", danger: false, tasks: ["PHONE IN THE KITCHEN", "Lights out by 9:30 PM", "8.5 hours sleep for Test/HGH"] }
         ];
 
-        // Get today's date for daily reset (MM/DD/YYYY)
-        const today = new Date().toLocaleDateString();
+        const todayStr = new Date().toLocaleDateString();
+
+        function formatTime(timeStr) {
+            const [h, m] = timeStr.split(":").map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hour12 = h % 12 || 12;
+            return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
+        }
 
         function timeToMins(timeStr) {
             const [h, m] = timeStr.split(":").map(Number);
             return (h * 60) + m;
         }
 
-        function render() {
+        function renderSchedule() {
             const now = new Date();
             const currentMins = (now.getHours() * 60) + now.getMinutes();
-            
-            // Update clock
-            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('current-time').innerText = now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
 
-            // Find current task
             let activeTask = null;
             let activeIndex = -1;
 
             for (let i = 0; i < schedule.length; i++) {
-                const task = schedule[i];
-                const startMins = timeToMins(task.start);
-                const endMins = timeToMins(task.end);
-
-                if (currentMins >= startMins && currentMins < endMins) {
-                    activeTask = task;
-                    activeIndex = i;
-                    break;
+                if (currentMins >= timeToMins(schedule[i].start) && currentMins < timeToMins(schedule[i].end)) {
+                    activeTask = schedule[i]; activeIndex = i; break;
                 }
             }
 
-            const container = document.getElementById('app-container');
+            const container = document.getElementById('schedule-container');
             const statusText = document.getElementById('status-text');
 
-            // If outside scheduled hours (e.g., 2 AM), show sleep
             if (!activeTask) {
-                if (currentMins < timeToMins("06:00")) {
-                    statusText.innerText = "SLEEPING";
-                    container.innerHTML = `
-                        <div class="active-card">
-                            <div class="time-block">00:00 - 06:00</div>
-                            <div class="task-title">Go to sleep.</div>
-                            <div class="checklist">
-                                <div class="check-item completed">
-                                    <div class="checkbox"></div>
-                                    <div class="check-text">Phone is in the kitchen</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // After 23:59 (rare edge case, just show sleep)
-                    statusText.innerText = "SLEEPING";
-                    container.innerHTML = `<div class="task-title">Go to bed.</div>`;
-                }
+                statusText.innerText = "SLEEPING";
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="time-block">12:00 AM - 6:00 AM</div>
+                        <div class="task-title">Go to sleep.</div>
+                    </div>`;
                 return;
             }
 
             statusText.innerText = activeTask.danger ? "CAUTION" : "ACTIVE NOW";
-
-            // Build HTML
             let html = `
-                <div class="active-card ${activeTask.danger ? 'danger' : ''}">
-                    <div class="time-block">${activeTask.start} - ${activeTask.end}</div>
+                <div class="card ${activeTask.danger ? 'danger' : ''}">
+                    <div class="time-block">${formatTime(activeTask.start)} - ${formatTime(activeTask.end)}</div>
                     <div class="task-title">${activeTask.title}</div>
                     <div class="checklist">
             `;
 
             activeTask.tasks.forEach((taskText, taskIndex) => {
-                const storageKey = `${today}-${activeIndex}-${taskIndex}`;
+                const storageKey = `${todayStr}-${activeIndex}-${taskIndex}`;
                 const isChecked = localStorage.getItem(storageKey) === 'true';
-                
                 html += `
-                    <div class="check-item ${isChecked ? 'completed' : ''} ${activeTask.danger ? 'danger' : ''}" onclick="toggleCheck('${storageKey}', this)">
+                    <div class="check-item ${isChecked ? 'completed' : ''} ${activeTask.danger ? 'danger' : ''}" onclick="toggleScheduleCheck('${storageKey}', this)">
                         <div class="checkbox"></div>
                         <div class="check-text">${taskText}</div>
-                    </div>
-                `;
+                    </div>`;
             });
 
             html += `</div></div>`;
-
-            // Add "Next Up" text
-            if (activeIndex < schedule.length - 1) {
-                const nextTask = schedule[activeIndex + 1];
-                html += `<div class="next-up">Next up: ${nextTask.title} at ${nextTask.start}</div>`;
-            }
-
             container.innerHTML = html;
         }
 
-        function toggleCheck(key, element) {
+        function toggleScheduleCheck(key, element) {
             const isCompleted = element.classList.contains('completed');
             if (isCompleted) {
                 element.classList.remove('completed');
@@ -308,11 +332,118 @@
             }
         }
 
-        // Initial render
-        render();
+        /* =========================================
+           2. WORKOUT LOGIC (PPL SPLIT TRACKER)
+           ========================================= */
+        const workoutSplit = [
+            { 
+                title: "Push (Chest/Shoulders/Tris)", 
+                exercises: ["Incline Dumbbell Press: 3x8-10", "Flat Machine Press: 3x8-10", "Seated Shoulder Press: 3x8-10", "Cable Lateral Raises: 4x12-15", "Tricep Pushdowns: 3x10-12", "Overhead Tricep Ext: 3x10-12"] 
+            },
+            { 
+                title: "Pull (Back/Biceps)", 
+                exercises: ["Lat Pulldown/Pull-ups: 3x8-10", "Seated Cable Row: 3x8-10", "Cable Face Pulls: 3x12-15", "Standing DB Curls: 3x10-12", "Hammer Curls: 3x10-12"] 
+            },
+            { 
+                title: "Legs (Quads/Hams)", 
+                exercises: ["Leg Press or Squats: 3x8-10", "Romanian Deadlifts: 3x8-10", "Leg Extensions: 3x10-12", "Lying Leg Curls: 3x10-12", "Calf Raises: 4x15-20"] 
+            },
+            { 
+                title: "Rest Day", 
+                exercises: ["Walk 30 mins", "Drink 3-4L Water", "Stretch/Mobility"] 
+            },
+            { 
+                title: "Push (Shoulder Focus)", 
+                exercises: ["Overhead Press: 3x8-10", "Incline Dumbbell Press: 3x8-10", "Cable Flys: 3x12-15", "DB Lateral Raises: 4x12-15", "Close-Grip Bench/Dips: 3x8-10"] 
+            },
+            { 
+                title: "Pull (Width Focus)", 
+                exercises: ["Pull-Ups or Wide Pulldown: 3x8-10", "T-Bar Row/Machine Row: 3x8-10", "Reverse Pec Deck: 3x12-15", "Incline DB Curls: 3x10-12", "Rope Hammer Curls: 3x10-12"] 
+            },
+            { 
+                title: "Legs (Posterior Focus)", 
+                exercises: ["Deadlifts or RDLs: 3x5-8", "Leg Press: 3x10-12", "Lying Leg Curls: 3x12-15", "Walking Lunges: 3x10 per leg", "Seated Calf Raises: 4x15-20"] 
+            }
+        ];
 
-        // Check time every 30 seconds to swap tasks
-        setInterval(render, 30000);
+        // Get workout day from local storage, default to 0
+        let currentWorkoutIndex = parseInt(localStorage.getItem('workoutIndex')) || 0;
+
+        function renderWorkout() {
+            const workout = workoutSplit[currentWorkoutIndex];
+            document.getElementById('workout-day-indicator').innerText = `DAY ${currentWorkoutIndex + 1} / 7`;
+            document.getElementById('workout-title').innerText = workout.title;
+            
+            const checklist = document.getElementById('workout-checklist');
+            checklist.innerHTML = '';
+
+            workout.exercises.forEach((exercise, index) => {
+                // Create a unique key for this specific workout day and exercise
+                const storageKey = `workout-${currentWorkoutIndex}-${index}`;
+                const isChecked = localStorage.getItem(storageKey) === 'true';
+
+                const div = document.createElement('div');
+                div.className = `check-item ${isChecked ? 'completed' : ''}`;
+                div.onclick = function() { toggleWorkoutCheck(storageKey, this); };
+                
+                div.innerHTML = `
+                    <div class="checkbox"></div>
+                    <div class="check-text">${exercise}</div>
+                `;
+                checklist.appendChild(div);
+            });
+        }
+
+        function toggleWorkoutCheck(key, element) {
+            const isCompleted = element.classList.contains('completed');
+            if (isCompleted) {
+                element.classList.remove('completed');
+                localStorage.setItem(key, 'false');
+            } else {
+                element.classList.add('completed');
+                localStorage.setItem(key, 'true');
+            }
+        }
+
+        function advanceWorkout() {
+            // Move to the next day. If at the end (7 days), loop back to day 1 (index 0)
+            currentWorkoutIndex = (currentWorkoutIndex + 1) % workoutSplit.length;
+            localStorage.setItem('workoutIndex', currentWorkoutIndex);
+            
+            // Re-render the new workout
+            renderWorkout();
+            
+            // Optional: Haptic feedback if supported
+            if (window.navigator.vibrate) window.navigator.vibrate(50);
+        }
+
+        /* =========================================
+           3. NAVIGATION & INIT
+           ========================================= */
+        function switchView(view) {
+            const scheduleView = document.getElementById('schedule-view');
+            const workoutView = document.getElementById('workout-view');
+            const navSchedule = document.getElementById('nav-schedule');
+            const navWorkout = document.getElementById('nav-workout');
+
+            if (view === 'schedule') {
+                scheduleView.classList.remove('hidden');
+                workoutView.classList.add('hidden');
+                navSchedule.classList.add('active');
+                navWorkout.classList.remove('active');
+                renderSchedule();
+            } else {
+                scheduleView.classList.add('hidden');
+                workoutView.classList.remove('hidden');
+                navSchedule.classList.remove('active');
+                navWorkout.classList.add('active');
+                renderWorkout();
+            }
+        }
+
+        // Initial render
+        renderSchedule();
+        setInterval(renderSchedule, 30000); // Update schedule time every 30s
 
     </script>
 </body>
